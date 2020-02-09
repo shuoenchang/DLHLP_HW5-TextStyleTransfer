@@ -78,19 +78,20 @@ if __name__ == '__main__':
     parser.add_argument("-iter_D", dest="iter_D", default=10 , type=int)
     parser.add_argument("-iter_F", dest="iter_F", default=5 , type=int)
     parser.add_argument("-F_pretrain_iter", dest="F_pretrain_iter", default=500 , type=int)
+    parser.add_argument("-train_iter", dest="train_iter", default=2000 , type=int)
     parser.add_argument("-log_steps", dest="log_steps", default=5 , type=int)
     parser.add_argument("-eval_steps", dest="eval_steps", default=25 , type=int)
     parser.add_argument("-learned_pos_embed", dest="learned_pos_embed", default=True, type=bool)
-    parser.add_argument("-dropout", dest="dropout", default=0 , type=int)
+    parser.add_argument("-dropout", dest="dropout", default=0 , type=float)
     
     parser.add_argument("-slf_factor", dest="slf_factor", default=0.25, type=float)
     parser.add_argument("-cyc_factor", dest="cyc_factor", default=0.5, type=float)
     parser.add_argument("-adv_factor", dest="adv_factor", default=1, type=float)
     
     parser.add_argument("-inp_shuffle_len", dest="inp_shuffle_len", default=0, type=int)
-    parser.add_argument("-inp_unk_drop_fac", dest="inp_unk_drop_fac", default=0, type=int)
-    parser.add_argument("-inp_rand_drop_fac", dest="inp_rand_drop_fac", default=0, type=int)
-    parser.add_argument("-inp_drop_prob", dest="inp_drop_prob", default=0, type=int)
+    parser.add_argument("-inp_unk_drop_fac", dest="inp_unk_drop_fac", default=0, type=float)
+    parser.add_argument("-inp_rand_drop_fac", dest="inp_rand_drop_fac", default=0, type=float)
+    parser.add_argument("-inp_drop_prob", dest="inp_drop_prob", default=0, type=float)
     
 
     args = parser.parse_args()

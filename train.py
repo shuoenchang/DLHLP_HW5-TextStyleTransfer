@@ -4,6 +4,7 @@ import torch
 import numpy as np
 from torch import nn, optim
 #from tensorboardX import SummaryWriter
+from tqdm.auto import tqdm, trange
 from torch.nn.utils import clip_grad_norm_
 
 from evaluator import Evaluator
@@ -242,7 +243,8 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
     print('Save Path:', config.save_folder)
 
     print('Model F pretraining......')
-    for i, batch in enumerate(train_iters):
+    bigbar = tqdm(train_iters, total=config.F_pretrain_iter, desc="F pretrain")
+    for i, batch in enumerate(bigbar):
         if i >= config.F_pretrain_iter:
             break
         slf_loss, cyc_loss, _ = f_step(config, vocab, model_F, model_D, optimizer_F, batch, 1.0, 1.0, False)
@@ -254,8 +256,8 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
             avrg_f_cyc_loss = np.mean(his_f_cyc_loss)
             his_f_slf_loss = []
             his_f_cyc_loss = []
-            print('[iter: {}] slf_loss:{:.4f}, rec_loss:{:.4f}'.format(i + 1, avrg_f_slf_loss, avrg_f_cyc_loss))
-
+            #print('[iter: {}] slf_loss:{:.4f}, rec_loss:{:.4f}'.format(i + 1, avrg_f_slf_loss, avrg_f_cyc_loss))
+        bigbar.set_postfix(slf_loss=slf_loss, rec_loss=cyc_loss)
     
     print('Training start......')
 
@@ -271,7 +273,8 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
                 temperature = (1 - k) * t_a + k * t_b
                 return temperature
     batch_iters = iter(train_iters)
-    while True:
+    bigbar = trange(config.train_iter, desc="train")
+    for _ in bigbar:
         drop_decay = calc_temperature(config.drop_rate_config, global_step)
         temperature = calc_temperature(config.temperature_config, global_step)
         batch = next(batch_iters)
@@ -297,7 +300,7 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
         #writer.add_scalar('rec_loss', rec_loss.item(), global_step)
         #writer.add_scalar('loss', loss.item(), global_step)
             
-            
+        """  
         if global_step % config.log_steps == 0:
             avrg_d_adv_loss = np.mean(his_d_adv_loss)
             avrg_f_slf_loss = np.mean(his_f_slf_loss)
@@ -311,6 +314,16 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
                 avrg_f_slf_loss, avrg_f_cyc_loss, avrg_f_adv_loss,
                 temperature, config.inp_drop_prob * drop_decay
             ))
+        """
+
+        bigbar.set_postfix(
+                d_adv_loss=np.mean(his_d_adv_loss),
+                f_slf_loss=np.mean(his_f_slf_loss),
+                f_cyc_loss=np.mean(his_f_cyc_loss),
+                f_adv_loss=np.mean(his_f_adv_loss),
+                temp=temperature,
+                drop=config.inp_drop_prob * drop_decay,
+                )
                 
         if global_step % config.eval_steps == 0:
             his_d_adv_loss = []
