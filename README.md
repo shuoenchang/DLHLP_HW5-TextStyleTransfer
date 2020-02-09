@@ -12,10 +12,11 @@ This folder contains the code for the paper [《Style Transformer: Unpaired Text
     - nltk
     - fasttext==0.8.3
     - pypi-kenlm
+    - tqdm
+    
 2. LM for evaluator
     - Download https://www.csie.ntu.edu.tw/~b05902064/ppl_yelp.binary
     - Put `ppl_yelp.binary` in the folder `evaluator`
-
 
 
 ## Usage
@@ -52,9 +53,6 @@ The most of them are listed below:
     adv_factor : the weight factor for the style controlling loss
 ```
 
-You can adjust them in the Config class from the ''main.py''.
-
-
 
 If you want to run the model, use the command:
 
@@ -63,13 +61,11 @@ python main.py
 ```
 
 
-
-
-
 To evaluation the model, we used Fasttext,  NLTK and KenLM toolkit to evaluate the style control, content preservation and fluency respectively. The evaluation related files for the Yelp dataset are placed in the ''evaluator'' folder. 
 
 Because the file "ppl_yelp.binary" is too big to upload, we exclude it from the "evaluator" folder. As a result, you can not evaluate the ppl score via evaluator. To solve this problem, you can use the KenLM toolkit to train a language model by yourself or use other script to evaluate it.
 
+(update) See Requirements 2. for the file `ppl_yelp.binary`.
 
 
 ## Outputs
