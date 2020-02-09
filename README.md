@@ -6,15 +6,15 @@ This folder contains the code for the paper [《Style Transformer: Unpaired Text
 
 ## Requirements
 
-pytorch >= 0.4.0
-
-torchtext >= 0.4.0
-
-nltk
-
-fasttext == 0.8.3
-
-kenlm
+1. pip packages
+    - pytorch>=0.4.0
+    - torchtext>=0.4.0
+    - nltk
+    - fasttext==0.8.3
+    - pypi-kenlm
+2. LM for evaluator
+    - Download https://www.csie.ntu.edu.tw/~b05902064/ppl_yelp.binary
+    - Put `ppl_yelp.binary` in the folder `evaluator`
 
 
 
