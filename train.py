@@ -3,6 +3,7 @@ import time
 import torch
 import numpy as np
 from torch import nn, optim
+import wandb
 #from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm, trange
 from torch.nn.utils import clip_grad_norm_
@@ -223,7 +224,12 @@ def f_step(config, vocab, model_F, model_D, optimizer_F, batch, temperature, dro
 
     return slf_rec_loss.item(), cyc_rec_loss.item(), adv_loss.item()
 
-def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
+def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):    
+    # logging
+    if config.use_wandb:
+        wandb.init(project="style-transfer")
+        wandb.config.update(vars(config))
+        
     optimizer_F = optim.Adam(model_F.parameters(), lr=config.lr_F, weight_decay=config.L2)
     optimizer_D = optim.Adam(model_D.parameters(), lr=config.lr_D, weight_decay=config.L2)
 
@@ -273,7 +279,7 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
                 temperature = (1 - k) * t_a + k * t_b
                 return temperature
     batch_iters = iter(train_iters)
-    bigbar = trange(config.train_iter, desc="train")
+    bigbar = trange(config.train_iter, desc="train", dynamic_ncols=True)
     for _ in bigbar:
         drop_decay = calc_temperature(config.drop_rate_config, global_step)
         temperature = calc_temperature(config.temperature_config, global_step)
@@ -315,15 +321,21 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
                 temperature, config.inp_drop_prob * drop_decay
             ))
         """
+        
+        info = {
+            "d_adv":np.mean(his_d_adv_loss),
+            "f_slf":np.mean(his_f_slf_loss),
+            "f_cyc":np.mean(his_f_cyc_loss),
+            "f_adv":np.mean(his_f_adv_loss),            
+        }
 
         bigbar.set_postfix(
-                d_adv_loss=np.mean(his_d_adv_loss),
-                f_slf_loss=np.mean(his_f_slf_loss),
-                f_cyc_loss=np.mean(his_f_cyc_loss),
-                f_adv_loss=np.mean(his_f_adv_loss),
                 temp=temperature,
                 drop=config.inp_drop_prob * drop_decay,
+                **info,
                 )
+        if config.use_wandb:
+            wandb.log(info)
                 
         if global_step % config.eval_steps == 0:
             his_d_adv_loss = []
@@ -425,6 +437,27 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
               acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg,
     ))
 
+    if config.use_wandb:
+        wandb.log({
+            "pos example":{
+                'gold': gold_text[1][0],
+                'self': raw_output[1][0],
+                'trans': rev_output[1][0],
+                'ref': ref_text[1][0],
+            },
+            "neg example":{
+                'gold': gold_text[0][0],
+                'self': raw_output[0][0],
+                'trans': rev_output[0][0],
+                'ref': ref_text[0][0],
+            },
+            "acc_pos":acc_pos,
+            "acc_neg": acc_neg, 
+            "bleu_pos": bleu_pos, 
+            "bleu_neg": bleu_neg, 
+            "ppl_pos": ppl_pos, 
+            "ppl_neg": ppl_neg,
+        }, commit=False)
     
     # save output
     save_file = config.save_folder + '/' + str(global_step) + '.txt'
