@@ -438,18 +438,20 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
     ))
 
     if config.use_wandb:
+        p_idx = np.random.randint(len(rev_output[1]))
+        n_idx = np.random.randint(len(rev_output[0]))
         wandb.log({
             "pos example":{
-                'gold': gold_text[1][0],
-                'self': raw_output[1][0],
-                'trans': rev_output[1][0],
-                'ref': ref_text[1][0],
+                'gold': gold_text[1][p_idx],
+                'self': raw_output[1][p_idx],
+                'trans': rev_output[1][p_idx],
+                'ref': ref_text[1][p_idx],
             },
             "neg example":{
-                'gold': gold_text[0][0],
-                'self': raw_output[0][0],
-                'trans': rev_output[0][0],
-                'ref': ref_text[0][0],
+                'gold': gold_text[0][n_idx],
+                'self': raw_output[0][n_idx],
+                'trans': rev_output[0][n_idx],
+                'ref': ref_text[0][n_idx],
             },
             "acc_pos":acc_pos,
             "acc_neg": acc_neg, 
