@@ -27,55 +27,59 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     
     # path
-    parser.add_argument("-data_path", dest="data_path", default="./data/yelp/")
-    parser.add_argument("-log_dir", dest="log_dir", default="runs/exp")
-    parser.add_argument("-save_path", dest="save_path", default="./save")
-    parser.add_argument("-preload_F", dest="preload_F", default="")
-    parser.add_argument("-preload_D", dest="preload_D", default="")
-    parser.add_argument("-pretrained_embed_path", dest="pretrained_embed_path", default="./embedding/")
+    parser.add_argument("-data_path", default="./data/yelp/", help="the path of the dataset to train.")
+    # parser.add_argument("-log_dir", default="runs/exp", help="")
+    parser.add_argument("-save_path", default="./save", help="the path to save the checkpoints.")
+    parser.add_argument("-preload_F", default="", help="the path to load pretrained model F.")
+    parser.add_argument("-preload_D", default="", help="the path to load pretrained discriminator D.")
+    parser.add_argument("-pretrained_embed_path", default="./embedding/", help="the path to pretrained Glove vectors.")
     
     # data
-    parser.add_argument("-min_freq", dest="min_freq", default=3, type=int)
-    parser.add_argument("-max_length", dest="max_length", default=16, type=int)
+    parser.add_argument("-min_freq", default=3, type=int, help="the minimun frequency for building vocabulary.")
+    parser.add_argument("-max_length", default=16, type=int, help="the maximum sentence length.")
     
     # model
-    parser.add_argument("-discriminator_method", dest="discriminator_method", default="Multi")
-    parser.add_argument("--load_pretrained_embed", dest="load_pretrained_embed", action="store_true")
-    parser.add_argument("-embed_size", dest="embed_size", default=256, type=int)
-    parser.add_argument("-d_model", dest="d_model", default=256, type=int)
-    parser.add_argument("-head", dest="h", default=4, type=int)
-    parser.add_argument("-num_styles", dest="num_styles", default=2, type=int)
-    parser.add_argument("-num_layers", dest="num_layers", default=4, type=int)
+    parser.add_argument("-discriminator_method", help="the type of discriminator ('Multi' or 'Cond')", default="Multi")
+    parser.add_argument("--load_pretrained_embed", help="whether to load pretrained embeddings.", action="store_true")
+    parser.add_argument("-embed_size", help="the dimension of the token embedding", default=256, type=int)
+    parser.add_argument("-d_model", help="the dimension of Transformer d_model parameter", default=256, type=int)
+    parser.add_argument("-head", help="the number of Transformer attention heads", dest="h", default=4, type=int)
+    parser.add_argument("-num_styles", help="the number of styles for discriminator", default=2, type=int)
+    parser.add_argument("-num_layers", help="the number of Transformer layers", default=4, type=int)
     
     # training
-    parser.add_argument("-batch_size", dest="batch_size", default=64 , type=int)
-    parser.add_argument("-lr_F", dest="lr_F", default=1e-4 , type=float)
-    parser.add_argument("-lr_D", dest="lr_D", default=1e-4 , type=float)
-    parser.add_argument("-L2", dest="L2", default=0.0 , type=float)
-    parser.add_argument("-iter_D", dest="iter_D", default=10 , type=int)
-    parser.add_argument("-iter_F", dest="iter_F", default=5 , type=int)
-    parser.add_argument("-F_pretrain_iter", dest="F_pretrain_iter", default=500 , type=int)
-    parser.add_argument("-train_iter", dest="train_iter", default=2000 , type=int)
+    parser.add_argument("-batch_size", help="the training batch size", default=64 , type=int)
+    parser.add_argument("-lr_F", help="the learning rate for the Style Transformer", default=1e-4 , type=float)
+    parser.add_argument("-lr_D", help="the learning rate for the discriminator", default=1e-4 , type=float)
+    parser.add_argument("-L2", help="the L2 norm regularization factor", default=0.0 , type=float)
+    parser.add_argument("-iter_D", help="the number of the discriminator update steps per training iteration", default=10 , type=int)
+    parser.add_argument("-iter_F", help="the number of the Style Transformer update steps per training iteration", default=5 , type=int)
+    parser.add_argument("-F_pretrain_iter", help="the number of the Style Transformer pretraining steps (train on self rec loss)", default=500 , type=int)
+    parser.add_argument("-train_iter", help="total training iterations", default=2000 , type=int)
     #parser.add_argument("-log_steps", dest="log_steps", default=5 , type=int)
-    parser.add_argument("-eval_steps", dest="eval_steps", default=25 , type=int)
-    parser.add_argument("-learned_pos_embed", dest="learned_pos_embed", default=True, type=bool)
-    parser.add_argument("-dropout", dest="dropout", default=0.1, type=float)
+    parser.add_argument("-eval_steps", help="the number of steps to per evaluation", default=25 , type=int)
+    parser.add_argument("-learned_pos_embed", help="whether to learn positional embedding", default=True, type=bool)
+    parser.add_argument("-dropout", help="the dropout factor for the whole model", default=0.1, type=float)
     
-    parser.add_argument("-slf_factor", dest="slf_factor", default=0.25, type=float)
-    parser.add_argument("-cyc_factor", dest="cyc_factor", default=0.5, type=float)
-    parser.add_argument("-adv_factor", dest="adv_factor", default=1, type=float)
+    parser.add_argument("-slf_factor", help="the weight factor for the self reconstruction loss", default=0.25, type=float)
+    parser.add_argument("-cyc_factor", help="the weight factor for the cycle reconstruction loss", default=0.5, type=float)
+    parser.add_argument("-adv_factor", help="the weight factor for the style controlling loss", default=1, type=float)
     
-    parser.add_argument("-inp_shuffle_len", dest="inp_shuffle_len", default=0, type=int)
-    parser.add_argument("-inp_unk_drop_fac", dest="inp_unk_drop_fac", default=0, type=float)
-    parser.add_argument("-inp_rand_drop_fac", dest="inp_rand_drop_fac", default=0, type=float)
-    parser.add_argument("-inp_drop_prob", dest="inp_drop_prob", default=0.1, type=float)
+    # parser.add_argument("-inp_shuffle_len", dest="inp_shuffle_len", default=0, type=int)
+    # parser.add_argument("-inp_unk_drop_fac", dest="inp_unk_drop_fac", default=0, type=float)
+    # parser.add_argument("-inp_rand_drop_fac", dest="inp_rand_drop_fac", default=0, type=float)
+    parser.add_argument("-inp_drop_prob", help="the initial word dropout rate,"
+        " which will gradually increase to 2x over the course of training", default=0.1, type=float)
+    parser.add_argument("-temp", help="the initial softmax temperature,"
+        " which will gradually decrease to 0.5x over the course of training", default=1.0, type=float)
     
     # others
-    parser.add_argument("--use_wandb", action="store_true")
+    parser.add_argument("--use_wandb", help="log training with wandb, "
+        "requires wandb, install with \"pip install wandb\"", action="store_true")
 
     args = parser.parse_args()
-    args.drop_rate_config = [(1, 0)]
-    args.temperature_config = [(1, 0)]
+    args.drop_rate_config = [(1, 0), (2, args.train_iter)] # (rate, step), ...
+    args.temperature_config = [(args.temp, 0), (0.5*args.temp, args.train_iter)] # (temp, step) ...
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.num_classes = args.num_styles + 1 if args.discriminator_method == 'Multi' else 2
     

@@ -9,7 +9,7 @@ from tqdm.auto import tqdm, trange
 from torch.nn.utils import clip_grad_norm_
 
 from evaluator import Evaluator
-from utils import tensor2text, calc_ppl, idx2onehot, add_noise, word_drop
+from utils import tensor2text, calc_ppl, idx2onehot, add_noise, word_dropout #word_drop
 
 def get_lengths(tokens, eos_idx):
     lengths = torch.cumsum(tokens == eos_idx, 1)
@@ -144,11 +144,11 @@ def f_step(config, vocab, model_F, model_D, optimizer_F, batch, temperature, dro
 
     # self reconstruction loss
 
-    noise_inp_tokens = word_drop(
+    noise_inp_tokens = word_dropout(#word_drop(
         inp_tokens,
         inp_lengths, 
         config.inp_drop_prob * drop_decay,
-        vocab
+        unk_idx #vocab
     )
     noise_inp_lengths = get_lengths(noise_inp_tokens, eos_idx)
 
