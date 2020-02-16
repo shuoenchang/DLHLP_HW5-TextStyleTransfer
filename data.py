@@ -20,7 +20,7 @@ def load_dataset(config, train_pos='train.pos', train_neg='train.neg',
                  test_pos='test.pos', test_neg='test.neg'):
 
     root = config.data_path
-    TEXT = data.Field(batch_first=True, eos_token='<eos>')
+    TEXT = data.Field(batch_first=True, eos_token='<eos>', fix_length=config.max_length)
     
     dataset_fn = lambda name: data.TabularDataset(
         path=root + name,
