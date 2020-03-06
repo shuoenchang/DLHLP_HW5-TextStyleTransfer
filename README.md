@@ -15,30 +15,26 @@ This folder contains the code for the paper [《Style Transformer: Unpaired Text
     - tqdm
     
 2. LM for evaluator
-    - Download https://www.csie.ntu.edu.tw/~b05902064/ppl_yelp.binary
+    - Download https://drive.google.com/open?id=1pklyWxzNPPxnKNy_TmA8h_tmGmiZttPN
     - Put `ppl_yelp.binary` in the folder `evaluator`
 
 ## Usage
 
 The hyperparameters for the Style Transformer can be found in `main.py` or with `python main.py -h`.
 
-- To run task 1, use the command:
-    ```shell
-    python main.py -cyc_factor 0.0
-    ```
-- To run task 2, use the command:
-    ```shell
-    SAVE=./save/Feb15141010/ckpts/2000 # just example
-    python main.py -F_pretrain_iter 0 \
-    -cyc_factor 0.5 -temp 0.5 \
-    -preload_F ${SAVE}_F.pth \
-    -preload_D ${SAVE}_D.pth
-    ```
+- To train:
+```shell
+python main.py --do_train
+```
+- To inference on test set:
+```shell
+SAVE=./save/Feb15141010/ckpts/2000 # just example
+python main.py --do_test \
+-test_out ./submission.txt \
+-preload_F ${SAVE}_F.pth \
+-preload_D ${SAVE}_D.pth
+```
 You can modify other parameters to suit your need.
-
-To evaluation the model, we used Fasttext,  NLTK and KenLM toolkit to evaluate the style control, content preservation and fluency respectively. The evaluation related files for the Yelp dataset are placed in the ''evaluator'' folder. 
-
-See Requirements 2. for the file `ppl_yelp.binary`.
 
 
 ## Outputs
