@@ -27,6 +27,7 @@ class StyleTransformer(nn.Module):
         self.sos_token = nn.Parameter(torch.randn(d_model))
         self.encoder = Encoder(num_layers, d_model, len(vocab), h, dropout)
         self.decoder = Decoder(num_layers, d_model, len(vocab), h, dropout)
+        self.attn_weights = None
         
     def forward(self, inp_tokens, gold_tokens, inp_lengths, style,
                 generate=False, differentiable_decode=False, temperature=1.0):
@@ -61,12 +62,15 @@ class StyleTransformer(nn.Module):
                 src_mask, tgt_mask[:, :, :max_dec_len, :max_dec_len],
                 temperature
             )
+            self.attn_weights = self.decoder.get_attn_weights()
         else:
-            
+
             log_probs = []
             next_token = sos_token
             prev_states = None
             
+            attn_weights = None
+
             for k in range(self.max_length):
                 log_prob, prev_states = self.decoder.incremental_forward(
                     next_token, memory,
@@ -74,6 +78,13 @@ class StyleTransformer(nn.Module):
                     temperature,
                     prev_states
                 )
+
+                attn = self.decoder.get_attn_weights()
+                if attn_weights == None:
+                    attn_weights = attn
+                else:
+                    for layer in range(len(attn)):
+                        attn_weights[layer] = torch.cat([attn_weights[layer], attn[layer]], dim=2)
 
                 log_probs.append(log_prob)
                 
@@ -86,9 +97,12 @@ class StyleTransformer(nn.Module):
                 #    break
 
             log_probs = torch.cat(log_probs, 1)
-            
+            self.attn_weights = attn_weights
             
         return log_probs
+
+    def get_decode_src_attn_weight(self):
+        return self.attn_weights
     
 class Discriminator(nn.Module):
     def __init__(self, config, vocab):
@@ -112,7 +126,7 @@ class Discriminator(nn.Module):
         self.encoder = Encoder(num_layers, d_model, len(vocab), h, dropout)
         self.classifier = Linear(d_model, num_classes)
     
-    def forward(self, inp_tokens, inp_lengths, style=None):
+    def forward(self, inp_tokens, inp_lengths, style=None, return_features=False):
         batch_size = inp_tokens.size(0)
         num_extra_token = 1 if style is None else 2
         max_seq_len = inp_tokens.size(1)
@@ -135,6 +149,9 @@ class Discriminator(nn.Module):
         encoded_features = self.encoder(enc_input, mask)
         logits = self.classifier(encoded_features[:, 0])
 
+        if return_features:
+            return F.log_softmax(logits, -1), encoded_features[:, 0]
+        
         return F.log_softmax(logits, -1)
         
         
@@ -190,6 +207,15 @@ class Decoder(nn.Module):
         
         return self.generator(y, temperature), new_states
     
+    def get_attn_weights(self):
+
+        attn_weights = []
+
+        for layer in self.layers:
+            attn_weights.append(layer.get_attn_weight())
+
+        return attn_weights
+
 class Generator(nn.Module):
     def __init__(self, d_model, vocab_size):
         super(Generator, self).__init__()
@@ -255,6 +281,9 @@ class DecoderLayer(nn.Module):
         new_states.append(x)
         x = self.sublayer[2].incremental_forward(x, lambda x: self.pw_ffn(x[:, -1:]))
         return x, new_states  
+
+    def get_attn_weight(self):
+        return self.src_attn.attn_weight_hist
    
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, h, dropout):
@@ -265,14 +294,17 @@ class MultiHeadAttention(nn.Module):
         self.head_projs = nn.ModuleList([nn.Linear(d_model, d_model) for _ in range(3)])
         self.fc = nn.Linear(d_model, d_model)
         self.dropout = nn.Dropout(dropout)
-        
+        self.attn_weight_hist = None
+
     def forward(self, query, key, value, mask):
         batch_size = query.size(0)
 
         query, key, value = [l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
                              for x, l in zip((query, key, value), self.head_projs)]
 
-        attn_feature, _ = scaled_attention(query, key, value, mask)
+        attn_feature, attn_weight = scaled_attention(query, key, value, mask)
+
+        self.attn_weight_hist = attn_weight.detach().cpu()
 
         attn_concated = attn_feature.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
 
