@@ -26,8 +26,7 @@ class StyleTransformer(nn.Module):
         )
         self.sos_token = nn.Parameter(torch.randn(d_model))
         self.encoder = Encoder(num_layers, d_model, len(vocab), h, dropout)
-        self.decoder = Decoder(num_layers, d_model, len(vocab), h, dropout)
-        self.attn_weights = None
+        self.decoder = Decoder(num_layers, d_model, len(vocab), h, dropout, config.use_gumbel)
         
     def forward(self, inp_tokens, gold_tokens, inp_lengths, style,
                 generate=False, differentiable_decode=False, temperature=1.0):
@@ -62,15 +61,12 @@ class StyleTransformer(nn.Module):
                 src_mask, tgt_mask[:, :, :max_dec_len, :max_dec_len],
                 temperature
             )
-            self.attn_weights = self.decoder.get_attn_weights()
         else:
-
+            
             log_probs = []
             next_token = sos_token
             prev_states = None
             
-            attn_weights = None
-
             for k in range(self.max_length):
                 log_prob, prev_states = self.decoder.incremental_forward(
                     next_token, memory,
@@ -78,13 +74,6 @@ class StyleTransformer(nn.Module):
                     temperature,
                     prev_states
                 )
-
-                attn = self.decoder.get_attn_weights()
-                if attn_weights == None:
-                    attn_weights = attn
-                else:
-                    for layer in range(len(attn)):
-                        attn_weights[layer] = torch.cat([attn_weights[layer], attn[layer]], dim=2)
 
                 log_probs.append(log_prob)
                 
@@ -97,12 +86,9 @@ class StyleTransformer(nn.Module):
                 #    break
 
             log_probs = torch.cat(log_probs, 1)
-            self.attn_weights = attn_weights
+            
             
         return log_probs
-
-    def get_decode_src_attn_weight(self):
-        return self.attn_weights
     
 class Discriminator(nn.Module):
     def __init__(self, config, vocab):
@@ -126,7 +112,7 @@ class Discriminator(nn.Module):
         self.encoder = Encoder(num_layers, d_model, len(vocab), h, dropout)
         self.classifier = Linear(d_model, num_classes)
     
-    def forward(self, inp_tokens, inp_lengths, style=None, return_features=False):
+    def forward(self, inp_tokens, inp_lengths, style=None):
         batch_size = inp_tokens.size(0)
         num_extra_token = 1 if style is None else 2
         max_seq_len = inp_tokens.size(1)
@@ -149,9 +135,6 @@ class Discriminator(nn.Module):
         encoded_features = self.encoder(enc_input, mask)
         logits = self.classifier(encoded_features[:, 0])
 
-        if return_features:
-            return F.log_softmax(logits, -1), encoded_features[:, 0]
-        
         return F.log_softmax(logits, -1)
         
         
@@ -173,11 +156,11 @@ class Encoder(nn.Module):
         return self.norm(y)
         
 class Decoder(nn.Module):
-    def __init__(self, num_layers, d_model, vocab_size, h, dropout):
+    def __init__(self, num_layers, d_model, vocab_size, h, dropout, use_gumbel=False):
         super(Decoder, self).__init__()
         self.layers = nn.ModuleList([DecoderLayer(d_model, h, dropout) for _ in range(num_layers)])
         self.norm = LayerNorm(d_model)
-        self.generator = Generator(d_model, vocab_size)
+        self.generator = Generator(d_model, vocab_size, use_gumbel)
 
     def forward(self, x, memory, src_mask, tgt_mask, temperature):
         y = x
@@ -207,31 +190,23 @@ class Decoder(nn.Module):
         
         return self.generator(y, temperature), new_states
     
-    def get_attn_weights(self):
-
-        attn_weights = []
-
-        for layer in self.layers:
-            attn_weights.append(layer.get_attn_weight())
-
-        return attn_weights
-
 class Generator(nn.Module):
-    def __init__(self, d_model, vocab_size):
+    def __init__(self, d_model, vocab_size, use_gumbel):
         super(Generator, self).__init__()
         self.proj = nn.Linear(d_model, vocab_size)
+        self.use_gumbel = use_gumbel
 
     def forward(self, x, temperature):
-        return F.log_softmax(self.proj(x) / temperature, dim=-1)
+        if self.use_gumbel:
+            return torch.nn.functional.gumbel_softmax(self.proj(x), tau=temperature, hard=False, eps=1e-10, dim=-1)
+        else:
+            return F.log_softmax(self.proj(x) / temperature, dim=-1)
 
 class EmbeddingLayer(nn.Module):
     def __init__(self, vocab, d_model, max_length, pad_idx, learned_pos_embed, load_pretrained_embed):
         super(EmbeddingLayer, self).__init__()
         self.token_embed = Embedding(len(vocab), d_model)
-        if learned_pos_embed:
-            self.pos_embed = Embedding(max_length, d_model)
-        else:
-            self.pos_embed = SinosuidalEmbedding(d_model, max_len=max_length)
+        self.pos_embed = Embedding(max_length, d_model)
         self.vocab_size = len(vocab)
         if load_pretrained_embed:
             self.token_embed = nn.Embedding.from_pretrained(vocab.vectors)
@@ -284,9 +259,6 @@ class DecoderLayer(nn.Module):
         new_states.append(x)
         x = self.sublayer[2].incremental_forward(x, lambda x: self.pw_ffn(x[:, -1:]))
         return x, new_states  
-
-    def get_attn_weight(self):
-        return self.src_attn.attn_weight_hist
    
 class MultiHeadAttention(nn.Module):
     def __init__(self, d_model, h, dropout):
@@ -297,17 +269,14 @@ class MultiHeadAttention(nn.Module):
         self.head_projs = nn.ModuleList([nn.Linear(d_model, d_model) for _ in range(3)])
         self.fc = nn.Linear(d_model, d_model)
         self.dropout = nn.Dropout(dropout)
-        self.attn_weight_hist = None
-
+        
     def forward(self, query, key, value, mask):
         batch_size = query.size(0)
 
         query, key, value = [l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
                              for x, l in zip((query, key, value), self.head_projs)]
 
-        attn_feature, attn_weight = scaled_attention(query, key, value, mask)
-
-        self.attn_weight_hist = attn_weight.detach().cpu()
+        attn_feature, _ = scaled_attention(query, key, value, mask)
 
         attn_concated = attn_feature.transpose(1, 2).contiguous().view(batch_size, -1, self.h * self.d_k)
 
@@ -368,20 +337,3 @@ def Embedding(num_embeddings, embedding_dim, padding_idx=None):
 def LayerNorm(embedding_dim, eps=1e-6):
     m = nn.LayerNorm(embedding_dim, eps)
     return m
-
-class SinosuidalEmbedding(nn.Module):
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
-        super().__init__()
-        self.dropout = nn.Dropout(p=dropout)
-
-        pe = torch.zeros(max_len, d_model)
-        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0).transpose(0, 1)
-        self.register_buffer('pe', pe)
-
-    def forward(self, x):
-        x = x + self.pe[:x.size(0), :]
-        return self.dropout(x)
