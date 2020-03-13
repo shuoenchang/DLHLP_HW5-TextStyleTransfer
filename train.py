@@ -225,10 +225,6 @@ def f_step(config, vocab, model_F, model_D, optimizer_F, batch, temperature, dro
     return slf_rec_loss.item(), cyc_rec_loss.item(), adv_loss.item()
 
 def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):    
-    # logging
-    if config.use_wandb:
-        wandb.init(project="style-transfer")
-        wandb.config.update(vars(config))
         
     optimizer_F = optim.Adam(model_F.parameters(), lr=config.lr_F, weight_decay=config.L2)
     optimizer_D = optim.Adam(model_D.parameters(), lr=config.lr_D, weight_decay=config.L2)
@@ -459,6 +455,7 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
             "bleu_neg": bleu_neg, 
             "ppl_pos": ppl_pos, 
             "ppl_neg": ppl_neg,
+            "total_bleu": bleu_pos + bleu_neg
         }, commit=False)
     
     # save output
