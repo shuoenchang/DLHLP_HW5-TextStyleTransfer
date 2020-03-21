@@ -86,6 +86,10 @@ if __name__ == '__main__':
         "requires wandb, install with \"pip install wandb\"", action="store_true")
     
     parser.add_argument("--use_gumbel", help="handle discrete part in another way", action="store_true")
+    parser.add_argument("--part2", help="run part2", action="store_true")
+    parser.add_argument("--part2_model_dir", help="the models use in part2", type=str)
+    parser.add_argument("--part2_step", help="the trained step", type=int)
+
 
     args = parser.parse_args()
     args.drop_rate_config = [(1, 0), (2, args.train_iter)] # (rate, step), ...
@@ -93,4 +97,12 @@ if __name__ == '__main__':
     args.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     args.num_classes = args.num_styles + 1 if args.discriminator_method == 'Multi' else 2
     
-    main(args)
+    if args.part2:
+        from part2 import part2
+        assert args.part2_model_dir, "--part2_model_dir=<trained model dir> is needed" 
+        # example: 'save/Feb15203331/ckpts/'
+        assert args.part2_step, "--part2_step=<trained step> is needed" 
+        # example: 1300
+        part2(args)
+    else:
+        main(args)
