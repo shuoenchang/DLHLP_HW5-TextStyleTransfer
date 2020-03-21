@@ -1,6 +1,6 @@
 import torch
 
-def tensor2text(vocab, tensor):
+def tensor2text(vocab, tensor, remain_unk=False):
     tensor = tensor.cpu().numpy()
     text = []
     index2word = vocab.itos
@@ -13,7 +13,7 @@ def tensor2text(vocab, tensor):
         for idx in list(sample):
             if prev_token in stop_idxs:
                 break
-            if idx == unk_idx or idx == prev_token or idx == eos_idx:
+            if  (idx == unk_idx and not remain_unk) or idx == prev_token or idx == eos_idx:
                 continue
             prev_token = idx
             sample_filtered.append(index2word[idx])
