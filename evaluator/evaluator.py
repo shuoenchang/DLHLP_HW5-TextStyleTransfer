@@ -12,8 +12,8 @@ class Evaluator(object):
     def __init__(self):
         resource_package = __name__
 
-        yelp_acc_path = 'acc_yelp.bin'
-        yelp_ppl_path = 'ppl_yelp.binary'
+        yelp_acc_path = 'acc_imdb_yelp_mix.bin'#'acc_yelp.bin'
+        yelp_ppl_path = 'ppl_imdb_yelp_mix.binary'#'ppl_yelp.binary'
         yelp_ref0_path = 'yelp.refs.0'
         yelp_ref1_path = 'yelp.refs.1'
 
@@ -37,7 +37,7 @@ class Evaluator(object):
         if text_transfered == '':
             return False
         label = self.classifier_yelp.predict([text_transfered])
-        style_transfered = label[0][0] == '__label__positive'
+        style_transfered = ('pos' in label[0][0])
         return (style_transfered != style_origin)
 
     def yelp_acc_b(self, texts, styles_origin):
