@@ -1,7 +1,7 @@
 def write_in(from_file, to_file, label):
     for line in from_file.readlines():
         to_file.write("__label__"+label+" "+line)
-to_file = open("data_train.txt", "w") 
+to_file = open("data_train_mix.txt", "w") 
 imdb_pos = open("mix/train.pos","r")
 imdb_neg = open("mix/train.neg","r")
 yelp_pos = open("mix/train.pos","r")
