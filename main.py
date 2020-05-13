@@ -17,6 +17,7 @@ def main(args):
     
     train_iters, dev_iters, test_iters, vocab = load_dataset(args)
     print('Vocab size:', len(vocab))
+    print('len(train_iters):', len(train_iters))
     model_F = StyleTransformer(args, vocab).to(args.device)
     model_D = Discriminator(args, vocab).to(args.device)
     print(args.discriminator_method)
