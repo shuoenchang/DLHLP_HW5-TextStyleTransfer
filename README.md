@@ -13,6 +13,7 @@ This folder contains the code for the paper [《Style Transformer: Unpaired Text
     - fasttext==0.8.3
     - pypi-kenlm
     - tqdm
+    - wandb
     
 2. LM for evaluator
     - Download https://drive.google.com/open?id=1pklyWxzNPPxnKNy_TmA8h_tmGmiZttPN
@@ -35,8 +36,3 @@ python main.py --do_test \
 -preload_D ${SAVE}_D.pth
 ```
 You can modify other parameters to suit your need.
-
-
-## Outputs
-
-You can find the outputs of the original model in the "outputs" folder.
