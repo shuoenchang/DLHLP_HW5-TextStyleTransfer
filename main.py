@@ -6,6 +6,7 @@ from models import StyleTransformer, Discriminator
 from train import train, auto_eval
 import argparse
 import wandb
+from test import dev_eval
 
 def main(args):
     # logging
@@ -28,7 +29,10 @@ def main(args):
         temp = torch.load(args.preload_D)
         model_D.load_state_dict(temp)
     
-    train(args, vocab, model_F, model_D, train_iters, dev_iters, test_iters)
+    if args.do_train:
+        train(args, vocab, model_F, model_D, train_iters, dev_iters, test_iters)
+    if args.do_test:
+        dev_eval(args, vocab, model_F, test_iters, 0.5)
     
 
 if __name__ == '__main__':
@@ -82,6 +86,9 @@ if __name__ == '__main__':
         " which will gradually decrease to 0.5x over the course of training", default=1.0, type=float)
     
     # others
+    parser.add_argument("--do_train", help="run training algorithm.", action="store_true")
+    parser.add_argument("--do_test", help="run inference on test set.", action="store_true")
+    parser.add_argument("-test_out", help="output path for inference.", default="./submission.txt")
     parser.add_argument("--use_wandb", help="log training with wandb, "
         "requires wandb, install with \"pip install wandb\"", action="store_true")
     
