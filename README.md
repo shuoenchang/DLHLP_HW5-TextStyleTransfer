@@ -40,7 +40,7 @@ You can modify other parameters to suit your need.
 - To run hw5-2
 
 ```shell
-SAVE=./save/Feb15203331/ckpts/
+SAVE=./save/Feb15203331/ckpts/ #just example
 STEP=1300
 python main.py --part2 \
 --part2_model_dir $SAVE \
