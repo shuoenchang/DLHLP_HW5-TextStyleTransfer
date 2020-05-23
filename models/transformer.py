@@ -233,7 +233,7 @@ class EmbeddingLayer(nn.Module):
     def __init__(self, vocab, d_model, max_length, pad_idx, learned_pos_embed, load_pretrained_embed):
         super(EmbeddingLayer, self).__init__()
         self.token_embed = Embedding(len(vocab), d_model)
-        self.pos_embed = Embedding(max_length, d_model)
+        self.pos_embed = Embedding(max_length, d_model) if learned_pos_embed else SinosuidalEmbedding(d_model, max_len=max_length)
         self.vocab_size = len(vocab)
         if load_pretrained_embed:
             self.token_embed = nn.Embedding.from_pretrained(vocab.vectors)
@@ -371,3 +371,20 @@ def Embedding(num_embeddings, embedding_dim, padding_idx=None):
 def LayerNorm(embedding_dim, eps=1e-6):
     m = nn.LayerNorm(embedding_dim, eps)
     return m
+
+class SinosuidalEmbedding(nn.Module):	
+    def __init__(self, d_model, dropout=0.1, max_len=5000):	
+        super().__init__()	
+        self.dropout = nn.Dropout(p=dropout)	
+
+        pe = torch.zeros(max_len, d_model)	
+        position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)	
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))	
+        pe[:, 0::2] = torch.sin(position * div_term)	
+        pe[:, 1::2] = torch.cos(position * div_term)	
+        pe = pe.unsqueeze(0).transpose(0, 1)	
+        self.register_buffer('pe', pe)	
+
+    def forward(self, x):	
+        x = x + self.pe[:x.size(0), :]	
+        return self.dropout(x)
