@@ -40,7 +40,7 @@ if __name__ == '__main__':
     
     # path
     parser.add_argument("-data_path", default="./data/yelp/", help="the path of the dataset to train.")
-    # parser.add_argument("-log_dir", default="runs/exp", help="")
+    parser.add_argument("-log_dir", default="./log", help="")
     parser.add_argument("-save_path", default="./save", help="the path to save the checkpoints.")
     parser.add_argument("-preload_F", default="", help="the path to load pretrained model F.")
     parser.add_argument("-preload_D", default="", help="the path to load pretrained discriminator D.")
@@ -68,7 +68,7 @@ if __name__ == '__main__':
     parser.add_argument("-iter_F", help="the number of the Style Transformer update steps per training iteration", default=5 , type=int)
     parser.add_argument("-F_pretrain_iter", help="the number of the Style Transformer pretraining steps (train on self rec loss)", default=500 , type=int)
     parser.add_argument("-train_iter", help="total training iterations", default=2000 , type=int)
-    #parser.add_argument("-log_steps", dest="log_steps", default=5 , type=int)
+    parser.add_argument("-log_steps", dest="log_steps", default=5 , type=int)
     parser.add_argument("-eval_steps", help="the number of steps to per evaluation", default=25 , type=int)
     parser.add_argument("-learned_pos_embed", help="whether to learn positional embedding", default=True, type=bool)
     parser.add_argument("-dropout", help="the dropout factor for the whole model", default=0.1, type=float)

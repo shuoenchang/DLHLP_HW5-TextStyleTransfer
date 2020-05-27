@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from torch import nn, optim
 import wandb
-#from tensorboardX import SummaryWriter
+from tensorboardX import SummaryWriter
 from tqdm.auto import tqdm, trange
 from torch.nn.utils import clip_grad_norm_
 
@@ -234,7 +234,7 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
     his_f_cyc_loss = []
     his_f_adv_loss = []
     
-    #writer = SummaryWriter(config.log_dir)
+    writer = SummaryWriter(config.log_dir)
     global_step = 0
     model_F.train()
     model_D.train()
@@ -302,21 +302,22 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
         #writer.add_scalar('rec_loss', rec_loss.item(), global_step)
         #writer.add_scalar('loss', loss.item(), global_step)
             
-        """  
+        # """  
         if global_step % config.log_steps == 0:
             avrg_d_adv_loss = np.mean(his_d_adv_loss)
             avrg_f_slf_loss = np.mean(his_f_slf_loss)
             avrg_f_cyc_loss = np.mean(his_f_cyc_loss)
             avrg_f_adv_loss = np.mean(his_f_adv_loss)
-            log_str = '[iter {}] d_adv_loss: {:.4f}  ' + \
-                      'f_slf_loss: {:.4f}  f_cyc_loss: {:.4f}  ' + \
-                      'f_adv_loss: {:.4f}  temp: {:.4f}  drop: {:.4f}'
-            print(log_str.format(
-                global_step, avrg_d_adv_loss,
-                avrg_f_slf_loss, avrg_f_cyc_loss, avrg_f_adv_loss,
-                temperature, config.inp_drop_prob * drop_decay
-            ))
-        """
+            # log_str = '[iter {}] temp: {:.4f}  drop: {:.4f}'
+            # print(log_str.format(
+            #     temperature, config.inp_drop_prob * drop_decay
+            # ))
+
+            writer.add_scalar('loss/d_adv', avrg_d_adv_loss, global_step)
+            writer.add_scalar('loss/f_slf', avrg_f_slf_loss, global_step)
+            writer.add_scalar('loss/f_cyc', avrg_f_cyc_loss, global_step)
+            writer.add_scalar('loss/f_adv', avrg_f_adv_loss, global_step)
+        # """
         
         info = {
             "d_adv":np.mean(his_d_adv_loss),
@@ -342,9 +343,17 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
             #save model
             torch.save(model_F.state_dict(), config.save_folder + '/ckpts/' + str(global_step) + '_F.pth')
             torch.save(model_D.state_dict(), config.save_folder + '/ckpts/' + str(global_step) + '_D.pth')
-            auto_eval(config, vocab, model_F, test_iters, global_step, temperature)
-            #for path, sub_writer in writer.all_writers.items():
-            #    sub_writer.flush()
+            acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg = auto_eval(config, vocab, model_F, test_iters, global_step, temperature)
+
+            writer.add_scalar('metrics/acc/pos', acc_pos, global_step)
+            writer.add_scalar('metrics/acc/neg', acc_neg, global_step)
+            writer.add_scalar('metrics/bleu/pos', bleu_pos, global_step)
+            writer.add_scalar('metrics/bleu/neg', bleu_neg, global_step)
+            writer.add_scalar('metrics/ppl/pos', ppl_pos, global_step)
+            writer.add_scalar('metrics/ppl/neg', ppl_neg, global_step)
+
+            for path, sub_writer in writer.all_writers.items():
+               sub_writer.flush()
 
 def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
     model_F.eval()
@@ -493,3 +502,5 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
         print('*' * 20, '********', '*' * 20, file=fw)
         
     model_F.train()
+
+    return acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg
