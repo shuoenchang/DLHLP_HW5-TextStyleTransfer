@@ -150,7 +150,9 @@ def part2(args):
     log(log_f, '[rev ]', rev_output[idx])
     for l in range(len(attn_weight)):
         output_name = os.path.join(output_dir, f'problem1_attn_layer{l}.png')
-        show_attn(gold_token[idx], rev_token[idx], attn_weight[l][idx], 'attention map', output_name)
+        gold_length = int(get_lengths(inp_tokens[idx], eos_idx, 0))
+        rev_length = int(get_lengths(rev_idx[idx], eos_idx, 0))
+        show_attn(gold_token[idx][:gold_length], rev_token[idx][:rev_length], attn_weight[l][idx][:, :rev_length, :gold_length+1], 'attention map', output_name)
         log(log_f, f'save attention figure at {output_name}')
     
     log(log_f, '***** 2-1 end *****')

@@ -69,7 +69,7 @@ if __name__ == '__main__':
     parser.add_argument("-F_pretrain_iter", help="the number of the Style Transformer pretraining steps (train on self rec loss)", default=500 , type=int)
     parser.add_argument("-train_iter", help="total training iterations", default=2000 , type=int)
     parser.add_argument("-log_steps", dest="log_steps", default=5 , type=int)
-    parser.add_argument("-eval_steps", help="the number of steps to per evaluation", default=25 , type=int)
+    parser.add_argument("-eval_steps", help="the number of steps to per evaluation", default=100, type=int)
     parser.add_argument("-learned_pos_embed", help="whether to learn positional embedding", default=True, type=bool)
     parser.add_argument("-dropout", help="the dropout factor for the whole model", default=0.1, type=float)
     
@@ -90,7 +90,7 @@ if __name__ == '__main__':
     parser.add_argument("--do_test", help="run inference on test set.", action="store_true")
     parser.add_argument("-test_out", help="output path for inference.", default="./submission.txt")
     parser.add_argument("--use_wandb", help="log training with wandb, "
-        "requires wandb, install with \"pip install wandb\"", action="store_true")
+        "requires wandb, install with \"pip install wandb\"", action="store_true", default=True)
     
     parser.add_argument("--use_gumbel", help="handle discrete part in another way", action="store_true")
     parser.add_argument("--part2", help="run part2", action="store_true")

@@ -11,8 +11,8 @@ from torch.nn.utils import clip_grad_norm_
 from evaluator import Evaluator
 from utils import tensor2text, calc_ppl, idx2onehot, add_noise, word_dropout #word_drop
 
-def get_lengths(tokens, eos_idx):
-    lengths = torch.cumsum(tokens == eos_idx, 1)
+def get_lengths(tokens, eos_idx, dim=1):
+    lengths = torch.cumsum(tokens == eos_idx, dim)
     lengths = (lengths == 0).long().sum(-1)
     lengths = lengths + 1 # +1 for <eos> token
     return lengths
@@ -320,16 +320,16 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
         # """
         
         info = {
-            "d_adv":np.mean(his_d_adv_loss),
-            "f_slf":np.mean(his_f_slf_loss),
-            "f_cyc":np.mean(his_f_cyc_loss),
-            "f_adv":np.mean(his_f_adv_loss),            
+            "loss/d_adv":np.mean(his_d_adv_loss),
+            "loss/f_slf":np.mean(his_f_slf_loss),
+            "loss/f_cyc":np.mean(his_f_cyc_loss),
+            "loss/f_adv":np.mean(his_f_adv_loss),            
         }
 
         bigbar.set_postfix(
                 temp=temperature,
                 drop=config.inp_drop_prob * drop_decay,
-                **info,
+                # **info,
                 )
         if config.use_wandb:
             wandb.log(info)
@@ -353,7 +353,7 @@ def train(config, vocab, model_F, model_D, train_iters, dev_iters, test_iters):
             writer.add_scalar('metrics/ppl/neg', ppl_neg, global_step)
 
             for path, sub_writer in writer.all_writers.items():
-               sub_writer.flush()
+                sub_writer.flush()
 
 def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
     model_F.eval()
@@ -458,13 +458,13 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
                 'trans': rev_output[0][n_idx],
                 'ref': ref_text[0][n_idx],
             },
-            "acc_pos":acc_pos,
-            "acc_neg": acc_neg, 
-            "bleu_pos": bleu_pos, 
-            "bleu_neg": bleu_neg, 
-            "ppl_pos": ppl_pos, 
-            "ppl_neg": ppl_neg,
-            "total_bleu": bleu_pos + bleu_neg
+            "metrics/acc_pos":acc_pos,
+            "metrics/acc_neg": acc_neg, 
+            "metrics/bleu_pos": bleu_pos, 
+            "metrics/bleu_neg": bleu_neg, 
+            "metrics/ppl_pos": ppl_pos, 
+            "metrics/ppl_neg": ppl_neg,
+            "metrics/total_bleu": bleu_pos + bleu_neg
         }, commit=False)
     
     # save output
@@ -473,7 +473,7 @@ def auto_eval(config, vocab, model_F, test_iters, global_step, temperature):
     with open(eval_log_file, 'a') as fl:
         print(('iter{:5d}:  acc_pos: {:.4f} acc_neg: {:.4f} ' + \
                'bleu_pos: {:.4f} bleu_neg: {:.4f} ' + \
-               'ppl_pos: {:.4f} ppl_neg: {:.4f}\n').format(
+               'ppl_pos: {:.4f} ppl_neg: {:.4f}').format(
             global_step, acc_pos, acc_neg, bleu_pos, bleu_neg, ppl_pos, ppl_neg,
         ), file=fl)
     with open(save_file, 'w') as fw:
